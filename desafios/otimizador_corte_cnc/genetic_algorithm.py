@@ -1,50 +1,74 @@
+import random
 from common.layout_display import LayoutDisplayMixin
 
 class GeneticAlgorithm(LayoutDisplayMixin):
     def __init__(self, TAM_POP, recortes_disponiveis, sheet_width, sheet_height, numero_geracoes=100):
         print("Algoritmo Genético para Otimização do Corte de Chapa. Executado por Marco.")
         self.TAM_POP = TAM_POP
-        self.initial_layout = recortes_disponiveis  # Available cut parts
+        self.initial_layout = recortes_disponiveis
         self.sheet_width = sheet_width
         self.sheet_height = sheet_height
         self.POP = []
-        self.POP_AUX = []
         self.aptidao = []
         self.numero_geracoes = numero_geracoes
-        self.initialize_population()
         self.melhor_aptidoes = []
-        self.optimized_layout = None  # To be set after optimization
+        self.optimized_layout = None
+        self.initialize_population()
 
     def initialize_population(self):
-        # Initialize the population of individuals.
-        pass
+        """Cria a população inicial com layouts aleatórios."""
+        for _ in range(self.TAM_POP):
+            layout = random.sample(self.initial_layout, len(self.initial_layout))
+            self.POP.append(layout)
 
     def evaluate(self):
-        # Evaluate the fitness of individuals based on available parts.
-        pass
+       self.aptidao = []  # Resetando a lista de aptidões
 
-    def genetic_operators(self):
-        # Execute genetic operators (crossover, mutation, etc.) to evolve the population.
-        pass
+       for individuo in self.POP:  # POP parece ser a população
+           area_utilizada = sum(
+               recorte["largura"] * recorte["altura"] if recorte["tipo"] in ["retangular", "diamante"]
+               else 3.1415 * recorte["r"] ** 2 if recorte["tipo"] == "circular"
+               else 0
+               for recorte in individuo
+           )
+           self.aptidao.append(area_utilizada)  # Armazena a aptidão em uma lista separada
+
+    def selection(self):
+        """Seleciona indivíduos via torneio para crossover."""
+        new_population = []
+        for _ in range(self.TAM_POP):
+            ind1, ind2 = random.sample(range(self.TAM_POP), 2)
+            melhor = ind1 if self.aptidao[ind1] > self.aptidao[ind2] else ind2
+            new_population.append(self.POP[melhor])
+        self.POP = new_population
+
+    def crossover(self):
+        """Realiza crossover entre pares de indivíduos."""
+        for i in range(0, self.TAM_POP, 2):
+            if i + 1 < self.TAM_POP:
+                ponto = random.randint(1, len(self.POP[i]) - 1)
+                self.POP[i][:ponto], self.POP[i+1][:ponto] = self.POP[i+1][:ponto], self.POP[i][:ponto]
+
+    def mutate(self, mutation_rate=0.1):
+        """Aplica mutação trocando dois elementos aleatórios em um indivíduo."""
+        for individuo in self.POP:
+            if random.random() < mutation_rate:
+                idx1, idx2 = random.sample(range(len(individuo)), 2)
+                individuo[idx1], individuo[idx2] = individuo[idx2], individuo[idx1]
 
     def run(self):
-        # Main loop of the evolutionary algorithm.
-
-        # Temporary return statement to avoid errors
-        self.optimized_layout = self.initial_layout
+        """Executa o algoritmo genético."""
+        for _ in range(self.numero_geracoes):
+            self.evaluate()
+            self.selection()
+            self.crossover()
+            self.mutate()
+        self.optimized_layout = max(zip(self.POP, self.aptidao), key=lambda x: x[1])[0]
         return self.optimized_layout
 
     def optimize_and_display(self):
-        """
-        Displays the initial layout, runs the optimization algorithm,
-        and displays the optimized layout using the mixin's display_layout method.
-        """
-        # Display initial layout
+        """Exibe o layout inicial e o otimizado."""
         self.display_layout(self.initial_layout, title="Initial Layout - Genetic Algorithm")
-        
-        # Run the optimization algorithm (updates self.melhor_individuo)
         self.optimized_layout = self.run()
-        
-        # Display optimized layout
         self.display_layout(self.optimized_layout, title="Optimized Layout - Genetic Algorithm")
         return self.optimized_layout
